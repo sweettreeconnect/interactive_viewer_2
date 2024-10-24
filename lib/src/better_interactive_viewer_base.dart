@@ -18,6 +18,8 @@ import 'extensions.dart';
 abstract class BetterInteractiveViewerBase extends StatefulWidget {
   BetterInteractiveViewerBase({
     super.key,
+    this.scaleHorizontalEnabled = false,
+    this.scaleVerticalEnabled = false,
     this.allowNonCoveringScreenZoom = true,
     this.panAxis = PanAxis.free,
     this.maxScale = 2.5,
@@ -35,7 +37,11 @@ abstract class BetterInteractiveViewerBase extends StatefulWidget {
         assert(minScale.isFinite),
         assert(maxScale > 0),
         assert(!maxScale.isNaN),
+        assert(((scaleHorizontalEnabled && scaleEnabled) != (scaleVerticalEnabled && scaleEnabled)) || (!scaleVerticalEnabled && !scaleEnabled && !scaleHorizontalEnabled)), // assuring none of them are on, or either are on (using XOR)
         assert(maxScale >= minScale);
+        
+
+
 
   /// When set to [PanAxis.aligned], panning is only allowed in the horizontal
   /// axis or the vertical axis, diagonal panning is not allowed.
@@ -147,6 +153,14 @@ abstract class BetterInteractiveViewerBase extends StatefulWidget {
   // Used as the coefficient of friction in the inertial translation animation.
   // This value was eyeballed to give a feel similar to Google Photos.
   static const double _kDrag = 0.0000135;
+
+  /// Scales horizontally
+  ///
+  final bool scaleHorizontalEnabled;
+
+  /// Scales vertically
+  ///
+  final bool scaleVerticalEnabled;
 
   /// Returns the closest point to the given point on the given line segment.
   @visibleForTesting
@@ -662,16 +676,44 @@ abstract class BetterInteractiveViewerBaseState<
       widget.minScale,
       widget.maxScale,
     );
+    
+    
+
+
     Vector3 translation = matrix.getTranslation();
+    if (widget.scaleVerticalEnabled){
+      translation = Vector3.zero()..setValues(0, translation.y, 0);
+    }
+    if (widget.scaleHorizontalEnabled){
+      translation = Vector3.zero()..setValues(translation.x, 0, 0);
+    }
+    
     // If smaller than the viewport, set translation to 0
     if (clampedTotalScale <
         (widgetViewport.height / childBoundaryRect.height)) {
       translation.y = 0;
     }
+
+
+    
+
     final double clampedScale = clampedTotalScale / currentScale;
+
+    if (widget.scaleVerticalEnabled){
+      return matrix.clone()
+      ..setTranslation(translation)
+      ..scale(1, clampedScale, 1);
+    }
+
+    if (widget.scaleHorizontalEnabled) {
+      return matrix.clone()
+      ..setTranslation(translation)
+      ..scale(clampedScale, 1, 1);
+    }
+
     return matrix.clone()
       ..setTranslation(translation)
-      ..scale(clampedScale);
+      ..scale(clampedScale);  
   }
 
   /// Return a new matrix representing the given matrix after applying the given
